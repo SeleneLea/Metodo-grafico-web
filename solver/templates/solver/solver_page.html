@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <title>Solucionador de Programación Lineal</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 2em;
+        }
+        .form-section {
+            border: 1px solid #ccc;
+            padding: 1em;
+            margin-bottom: 1em;
+            border-radius: 8px;
+        }
+        .constraint-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        input[type='number'] {
+            width: 60px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Método Gráfico de Programación Lineal (2 Var)</h1>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="form-section">
+            <h3>Función Objetivo</h3>
+            <select name="goal">
+                <option value="maximize">Maximizar</option>
+                <option value="minimize">Minimizar</option>
+            </select>
+            Z =
+            <input type="number" name="obj_x1" step="any" required value="5" /> X₁ +
+            <input type="number" name="obj_x2" step="any" required value="3" /> X₂
+        </div>
+
+        <div class="form-section">
+            <h3>Restricciones</h3>
+            <div class="constraint-row">
+                <label for="num-constraints">Indica el número de restricciones:</label>
+                <input type="number" id="num-constraints" value="4" min="1" style="width: 80px;" />
+            </div>
+            <hr />
+            <div id="constraints-container"></div>
+        </div>
+
+        <button type="submit">Resolver y Graficar</button>
+    </form>
+
+    {% if results %}
+        {% if results.error %}
+            <h2>Error</h2>
+            <p>{{ results.error }}</p>
+        {% else %}
+            <h2>Resultados</h2>
+            <p>
+                <b>Solución Óptima:</b> Z = {{ results.optimal_value }} en el punto 
+                (X₁={{ results.optimal_point.x|floatformat:2 }}, X₂={{ results.optimal_point.y|floatformat:2 }})
+            </p>
+
+            <div style="width: 70%;">
+                <canvas id="myChart"></canvas>
+            </div>
+
+            {{ results|json_script:"results-data" }}
+
+            <script>
+                const resultsData = JSON.parse(document.getElementById('results-data').textContent);
+                const datasets = [];
+                
+                datasets.push({
+                    label: 'Región Factible',
+                    data: resultsData.feasible_vertices,
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 2,
+                    fill: true,
+                    showLine: true
+                });
+                
+                datasets.push({
+                    label: 'Punto Óptimo',
+                    data: [resultsData.optimal_point],
+                    backgroundColor: 'rgba(255, 99, 132, 1)',
+                    pointRadius: 8,
+                    pointHoverRadius: 10
+                });
+                
+                resultsData.plot_lines.forEach((line, index) => {
+                    datasets.push({
+                        label: `Restricción ${index + 1}`,
+                        data: line,
+                        type: 'line',
+                        borderColor: 'rgba(0, 0, 0, 0.3)',
+                        borderWidth: 1,
+                        fill: false,
+                        pointRadius: 0
+                    });
+                });
+                
+                const ctx = document.getElementById('myChart');
+                new Chart(ctx, {
+                    type: 'scatter',
+                    data: { datasets: datasets },
+                    options: {
+                        scales: {
+                            x: { 
+                                type: 'linear', 
+                                position: 'bottom', 
+                                beginAtZero: true, 
+                                title: { display: true, text: 'X₁' }
+                            },
+                            y: { 
+                                beginAtZero: true, 
+                                title: { display: true, text: 'X₂' }
+                            }
+                        }
+                    }
+                });
+            </script>
+        {% endif %}
+    {% endif %}
+
+    <script>
+    {% verbatim %}
+        const numConstraintsInput = document.getElementById('num-constraints');
+        const container = document.getElementById('constraints-container');
+
+        function generateConstraintInputs() {
+            const count = parseInt(numConstraintsInput.value, 10);
+            container.innerHTML = '';
+            if (isNaN(count) || count <= 0) return;
+
+            for (let i = 1; i <= count; i++) {
+                const rowHTML = `
+                    <div class="constraint-row">
+                        <input type="number" name="c${i}_x1" step="any" placeholder="X₁" required> X₁ + 
+                        <input type="number" name="c${i}_x2" step="any" placeholder="X₂" required> X₂
+                        <select name="c${i}_op">
+                            <option value="<=" selected>≤</option>
+                            <option value=">=">≥</option>
+                        </select>
+                        <input type="number" name="c${i}_rhs" step="any" placeholder="RHS" required>
+                    </div>`;
+                container.insertAdjacentHTML('beforeend', rowHTML);
+            }
+        }
+
+        numConstraintsInput.addEventListener('input', generateConstraintInputs);
+        document.addEventListener('DOMContentLoaded', generateConstraintInputs);
+    {% endverbatim %}
+    </script>
+</body>
+</html>
