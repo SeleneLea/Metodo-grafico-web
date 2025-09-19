@@ -2,7 +2,7 @@ import numpy as np
 from itertools import combinations
 
 def solve_graphical_method(data):
-    # --- 1. PARSE INPUT ---
+    # --- 1.  ---
     # extraer la función objetivo y el objetivo (maximizar/minimizar)
     goal = data.get('goal', 'maximize')
     obj_coeffs = [float(data.get('obj_x1', 0)), float(data.get('obj_x2', 0))]
